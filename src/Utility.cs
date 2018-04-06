@@ -2,6 +2,7 @@
 using Jint.Native;
 using Jint.Native.Array;
 using Jint.Native.Object;
+using Jint.Runtime.Descriptors;
 using Oxide.Core.Configuration;
 using System;
 using System.Collections.Generic;
@@ -22,10 +23,13 @@ namespace Oxide.Core.JavaScript
         public static void SetConfigFromObject(DynamicConfigFile config, ObjectInstance objectInstance)
         {
             config.Clear();
-            foreach (var property in objectInstance.GetOwnProperties())
+            foreach (KeyValuePair<string, PropertyDescriptor> property in objectInstance.GetOwnProperties())
             {
-                var value = property.Value.Value?.ToObject();
-                if (value != null) config[property.Key] = value;
+                object value = property.Value.Value?.ToObject();
+                if (value != null)
+                {
+                    config[property.Key] = value;
+                }
             }
         }
 
@@ -37,29 +41,37 @@ namespace Oxide.Core.JavaScript
         /// <returns></returns>
         public static ObjectInstance ObjectFromConfig(DynamicConfigFile config, Engine engine)
         {
-            var objInst = new ObjectInstance(engine) { Extensible = true };
-            foreach (var pair in config)
+            ObjectInstance objInst = new ObjectInstance(engine) { Extensible = true };
+            foreach (KeyValuePair<string, object> pair in config)
+            {
                 objInst.FastAddProperty(pair.Key, JsValueFromObject(pair.Value, engine), true, true, true);
+            }
+
             return objInst;
         }
 
         public static JsValue JsValueFromObject(object obj, Engine engine)
         {
-            var values = obj as List<object>;
+            List<object> values = obj as List<object>;
             if (values != null)
             {
-                var array = (ArrayInstance)engine.Array.Construct(values.Select(v => JsValueFromObject(v, engine)).ToArray());
+                ArrayInstance array = (ArrayInstance)engine.Array.Construct(values.Select(v => JsValueFromObject(v, engine)).ToArray());
                 array.Extensible = true;
                 return array;
             }
-            var dict = obj as Dictionary<string, object>;
+
+            Dictionary<string, object> dict = obj as Dictionary<string, object>;
             if (dict != null)
             {
-                var objInst = new ObjectInstance(engine) { Extensible = true };
-                foreach (var pair in dict)
+                ObjectInstance objInst = new ObjectInstance(engine) { Extensible = true };
+                foreach (KeyValuePair<string, object> pair in dict)
+                {
                     objInst.FastAddProperty(pair.Key, JsValueFromObject(pair.Value, engine), true, true, true);
+                }
+
                 return objInst;
             }
+
             return JsValue.FromObject(engine, obj);
         }
 

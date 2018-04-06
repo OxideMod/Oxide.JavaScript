@@ -23,7 +23,7 @@ namespace Oxide.Core.JavaScript.Plugins
 
         protected override void LoadSource()
         {
-            var source = File.ReadAllText(Filename);
+            string source = File.ReadAllText(Filename);
             JavaScriptEngine.SetValue("__CoffeeSource", source);
             JavaScriptEngine.Execute($"eval(__CompileScript('{Name}'))", new ParserOptions { Source = Path.GetFileName(Filename) });
         }

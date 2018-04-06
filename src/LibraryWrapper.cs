@@ -6,6 +6,7 @@ using Jint.Runtime.Descriptors;
 using Jint.Runtime.Interop;
 using Oxide.Core.Libraries;
 using System;
+using System.Reflection;
 
 namespace Oxide.Core.JavaScript
 {
@@ -25,19 +26,24 @@ namespace Oxide.Core.JavaScript
         {
             if (!CanPut(propertyName))
             {
-                if (throwOnError) throw new JavaScriptException(Engine.TypeError);
+                if (throwOnError)
+                {
+                    throw new JavaScriptException(Engine.TypeError);
+                }
 
                 return;
             }
 
-            var ownDesc = GetOwnProperty(propertyName);
+            PropertyDescriptor ownDesc = GetOwnProperty(propertyName);
 
             if (ownDesc == null)
             {
                 if (throwOnError)
+                {
                     throw new JavaScriptException(Engine.TypeError, "Unknown member: " + propertyName);
-                else
-                    return;
+                }
+
+                return;
             }
 
             ownDesc.Value = value;
@@ -46,14 +52,17 @@ namespace Oxide.Core.JavaScript
         public override PropertyDescriptor GetOwnProperty(string propertyName)
         {
             PropertyDescriptor x;
-            if (Properties.TryGetValue(propertyName, out x)) return x;
+            if (Properties.TryGetValue(propertyName, out x))
+            {
+                return x;
+            }
 
-            var library = (Library)Target;
-            var method = library.GetFunction(propertyName);
+            Library library = (Library)Target;
+            MethodInfo method = library.GetFunction(propertyName);
 
             if (method != null)
             {
-                var descriptor = new PropertyDescriptor(new MethodInfoFunctionInstance(Engine, new[] { method }), false, true, false);
+                PropertyDescriptor descriptor = new PropertyDescriptor(new MethodInfoFunctionInstance(Engine, new[] { method }), false, true, false);
                 Properties.Add(propertyName, descriptor);
                 return descriptor;
             }

@@ -44,11 +44,17 @@ namespace Oxide.Core.JavaScript.Libraries
         {
             // Get the data file
             DynamicConfigFile datafile = Interface.Oxide.DataFileSystem.GetDatafile(name);
-            if (datafile == null) return null;
+            if (datafile == null)
+            {
+                return null;
+            }
 
             // Check if it already exists
             ObjectInstance obj;
-            if (datafilemap.TryGetValue(datafile, out obj)) return obj;
+            if (datafilemap.TryGetValue(datafile, out obj))
+            {
+                return obj;
+            }
 
             // Create the table
             obj = Utility.ObjectFromConfig(datafile, JavaScriptEngine);
@@ -67,11 +73,17 @@ namespace Oxide.Core.JavaScript.Libraries
         {
             // Get the data file
             DynamicConfigFile datafile = Interface.Oxide.DataFileSystem.GetDatafile(name);
-            if (datafile == null) return;
+            if (datafile == null)
+            {
+                return;
+            }
 
             // Get the table
             ObjectInstance obj;
-            if (!datafilemap.TryGetValue(datafile, out obj)) return;
+            if (!datafilemap.TryGetValue(datafile, out obj))
+            {
+                return;
+            }
 
             // Copy and save
             Utility.SetConfigFromObject(datafile, obj);

@@ -14,6 +14,7 @@ using Oxide.Core.Libraries;
 using Oxide.Core.Logging;
 using Oxide.Core.Plugins.Watchers;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
@@ -64,19 +65,22 @@ namespace Oxide.Core.JavaScript
         /// Initializes a new instance of the JavaScriptExtension class
         /// </summary>
         /// <param name="manager"></param>
-        public JavaScriptExtension(ExtensionManager manager)
-            : base(manager)
+        public JavaScriptExtension(ExtensionManager manager) : base(manager)
         {
             ExceptionHandler.RegisterType(typeof(JavaScriptException), ex =>
             {
-                var jintEx = (JavaScriptException)ex;
-                var obj = jintEx.Error.ToObject() as ErrorInstance;
-                if (obj != null) return $"File: {jintEx.Location.Source} Line: {jintEx.LineNumber} Column: {jintEx.Column} {obj.Get("name").AsString()} {obj.Get("message").AsString()}:{Environment.NewLine}{jintEx.StackTrace}";
+                JavaScriptException jintEx = (JavaScriptException)ex;
+                ErrorInstance obj = jintEx.Error.ToObject() as ErrorInstance;
+                if (obj != null)
+                {
+                    return $"File: {jintEx.Location.Source} Line: {jintEx.LineNumber} Column: {jintEx.Column} {obj.Get("name").AsString()} {obj.Get("message").AsString()}:{Environment.NewLine}{jintEx.StackTrace}";
+                }
+
                 return $"File: {jintEx.Location.Source} Line: {jintEx.LineNumber} Column: {jintEx.Column} {jintEx.Message}:{Environment.NewLine}{jintEx.StackTrace}";
             });
             ExceptionHandler.RegisterType(typeof(ParserException), ex =>
             {
-                var parserEx = (ParserException)ex;
+                ParserException parserEx = (ParserException)ex;
                 return $"File: {parserEx.Source} Line: {parserEx.LineNumber} Column: {parserEx.Column} {parserEx.Description}:{Environment.NewLine}{parserEx.StackTrace}";
             });
         }
@@ -90,9 +94,12 @@ namespace Oxide.Core.JavaScript
             JavaScriptEngine = new Engine(cfg => cfg.AllowClr(AppDomain.CurrentDomain.GetAssemblies().Where(AllowAssemblyAccess).ToArray()));
             JavaScriptEngine.Global.FastSetProperty("importNamespace", new PropertyDescriptor(new ClrFunctionInstance(JavaScriptEngine, (thisObj, arguments) =>
             {
-                var nspace = TypeConverter.ToString(arguments.At(0));
+                string nspace = TypeConverter.ToString(arguments.At(0));
                 if (string.IsNullOrEmpty(nspace) || (WhitelistNamespaces?.Any(nspace.StartsWith) ?? false) || nspace.Equals("System"))
+                {
                     return new NamespaceReference(JavaScriptEngine, nspace);
+                }
+
                 return JsValue.Null;
             }), false, false, false));
         }
@@ -125,18 +132,23 @@ namespace Oxide.Core.JavaScript
             }
             else
             {
-                var jsValue = JavaScriptEngine.Global.GetProperty(path).Value;
-                if (jsValue != null) scope = jsValue.Value.AsObject();
+                JsValue? jsValue = JavaScriptEngine.Global.GetProperty(path).Value;
+                if (jsValue != null)
+                {
+                    scope = jsValue.Value.AsObject();
+                }
             }
+
             if (scope == null)
             {
                 Manager.Logger.Write(LogType.Info, "Library path: " + path + " cannot be set");
                 return;
             }
-            foreach (var name in library.GetFunctionNames())
+
+            foreach (string name in library.GetFunctionNames())
             {
-                var method = library.GetFunction(name);
-                var typeArgs = method.GetParameters().Select(p => p.ParameterType).ToList();
+                MethodInfo method = library.GetFunction(name);
+                List<Type> typeArgs = method.GetParameters().Select(p => p.ParameterType).ToList();
 
                 Type delegateType;
                 if (method.ReturnType == typeof(void))
@@ -160,7 +172,7 @@ namespace Oxide.Core.JavaScript
         public override void LoadPluginWatchers(string pluginDirectory)
         {
             // Register the watchers
-            var watcher = new FSWatcher(pluginDirectory, "*.js");
+            FSWatcher watcher = new FSWatcher(pluginDirectory, "*.js");
             Manager.RegisterPluginChangeWatcher(watcher);
             loader.Watcher = watcher;
             watcher = new FSWatcher(pluginDirectory, "*.coffee");
@@ -173,13 +185,14 @@ namespace Oxide.Core.JavaScript
         /// </summary>
         public override void OnModLoad()
         {
-            foreach (var extension in Manager.GetAllExtensions())
+            foreach (Extension extension in Manager.GetAllExtensions())
             {
-                if (!extension.IsGameExtension) continue;
-
-                WhitelistAssemblies = extension.WhitelistAssemblies;
-                WhitelistNamespaces = extension.WhitelistNamespaces;
-                break;
+                if (extension.IsGameExtension)
+                {
+                    WhitelistAssemblies = extension.WhitelistAssemblies;
+                    WhitelistNamespaces = extension.WhitelistNamespaces;
+                    break;
+                }
             }
 
             // Setup JavaScript instance
@@ -198,7 +211,10 @@ namespace Oxide.Core.JavaScript
             LoadLibrary(new JavaScriptDatafile(JavaScriptEngine), "data");
 
             // Bind any libraries to JavaScript
-            foreach (var name in Manager.GetLibraries()) LoadLibrary(Manager.GetLibrary(name), name.ToLowerInvariant());
+            foreach (string name in Manager.GetLibraries())
+            {
+                LoadLibrary(Manager.GetLibrary(name), name.ToLowerInvariant());
+            }
 
             // Extension to webrequests
             LoadLibrary(new JavaScriptWebRequests(), "webrequests");

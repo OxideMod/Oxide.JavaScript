@@ -34,10 +34,12 @@ namespace Oxide.Core.JavaScript.Plugins
         {
             JavaScriptEngine = engine;
 
-            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(compilerResourcePath))
+            using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(compilerResourcePath))
             {
-                using (var reader = new StreamReader(stream))
+                using (StreamReader reader = new StreamReader(stream))
+                {
                     engine.Execute(reader.ReadToEnd(), new ParserOptions { Source = "CoffeeScriptCompiler" });
+                }
             }
             engine.Execute("function __CompileScript(name){return CoffeeScript.compile(name+\"=\\n\"+__CoffeeSource.replace(/^/gm, '  '),{bare: true})}");
         }
